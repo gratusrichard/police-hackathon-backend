@@ -3,7 +3,7 @@ require('dotenv').config()
 const express = require('express')
 const mongoose = require('mongoose')
 const passport = require('passport')
-const passportLocal = require('passport-local').Strategy
+const localStatergy = require('passport-local').Strategy
 const session = require('express-session')
 const User = require('./models/user')
 const { register } = require('./models/user')
@@ -13,7 +13,7 @@ app = express()
 //configuring some basics
 app.use(express.urlencoded({extended:false}))
 //connect to mongodb
-mongoose.connect('mongodb://127.0.0.1:27017/police_backend').then(() => {
+mongoose.connect('mongodb://127.0.0.1:27017/policemain').then(() => {
     console.log('connection opened to moongoose successfully')
 }).catch((err) => {
     console.log('cannot open the connection because of ' + err)
@@ -23,11 +23,23 @@ mongoose.connect('mongodb://127.0.0.1:27017/police_backend').then(() => {
 
 app.use(session(
     {
-        secret: process.env.SECRET_KEY,
-        resave: false,
+        secret: "hello world ",
+        resave: true,
         saveUninitialized: false
     }
 ))
+
+//configuring passport js
+
+passport.use(new localStatergy(User.authenticate()))
+app.use(passport.initialize());
+  app.use(passport.session());
+  passport.serializeUser(User.serializeUser())
+  passport.deserializeUser(User.deserializeUser())
+  
+
+
+//listening on port 3000
 
 app.listen('3000', (err) => {
     if (err) {
@@ -38,30 +50,45 @@ app.listen('3000', (err) => {
     }
     })
 
-passport.use(new passportLocal(User.authenticate()))
 
+//register user
 app.post('/register',async (req, res, next) => {
    var { username, password, email } = req.body
      user = new User({ username, email })
     registeredUser =await User.register(user, password, (err) => {
        
         req.login(registeredUser, (err) => {
-            if (err) { res.send(error) }
-            res.send("logged in :)")
+            if (err) { res.send(err) }
+            console.log('logged in :)')
+            console.log()
         })     
     })
 })
 
+//user login
+app.post('/login',passport.authenticate('local'), (req, res) => {
 
-app.post('/login',passport.authenticate('local', { 
-    failureFlash: true,
-     failureRedirect: '/user/login',
-    successFlash: true}), (req,res)=> {
-
-     req.flash('success', 'successfully logged in , welcome back :)')
      
-     res.redirect('/bids/all')
-        
+     res.send("login successful :)")
+})
+     
+
+app.post('/loggedin', (req, res, next) => {
+    
+    if (req.isAuthenticated()) {
+        res.send('yes, you are still logged in :) this shit works :)')
+        console.log("you are still logged in")
+       
+    } else {
+        res.send("you are not logged in")
+        }
+})
+
+app.post('/logout',async (req, res, next) => {
+    res.send('you are no longer logged in')
+    await req.logout((err) => {
+    console.log(err)
+    })
+})
 
 
-     })
